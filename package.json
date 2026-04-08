@@ -1,0 +1,7 @@
+{
+  "name": "openclaw-agent-collaboration-board",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A lightweight collaboration observability plugin for OpenClaw",
+  "license": "MIT"
+}
