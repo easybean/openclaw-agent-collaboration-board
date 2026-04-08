@@ -113,6 +113,42 @@ A task that looks active on the surface but is not truly progressing.
 ### `needsDavidAction`
 A task or issue that needs a founder decision, approval, or priority call.
 
+
+## Installation
+
+This project is in early build stage and is not yet published as an installable package.
+
+For now:
+1. clone the repository
+2. inspect the docs in `docs/`
+3. use the MVP pipeline skeleton in `src/` as the starting point for implementation
+
+```bash
+git clone git@github.com:easybean/openclaw-agent-collaboration-board.git
+cd openclaw-agent-collaboration-board
+```
+
+## Development
+
+Current local structure:
+- `src/collector` for data collection
+- `src/normalizer` for unified task mapping
+- `src/evaluator` for actual-progress and stale detection
+- `src/renderer` for Telegram text rendering
+
+Current npm scripts are placeholders and will be replaced as the implementation solidifies.
+
+```bash
+npm install
+npm run build
+```
+
+At the current stage, the docs are still part of the primary source of truth.
+Implementation should follow:
+- `docs/technical-design.md`
+- `docs/mvp-fields-and-mapping.md`
+- `docs/mvp-implementation-tasks.md`
+
 ## Example output
 
 See:
