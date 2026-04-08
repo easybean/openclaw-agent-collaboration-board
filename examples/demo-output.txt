@@ -1,0 +1,10 @@
+【项目状态板】
+项目：OpenClaw Agent Collaboration Board
+
+当前任务
+- Board MVP field mapping | owner: 洪七公 | status: running | next: 洪七公
+- Runtime Lead timed reporting redesign | owner: 一灯大师 | status: blocked | next: 一灯大师
+- Choose next runtime status mechanism | owner: 洪七公 | status: waiting_approval | next: David
+
+待拍板
+- Choose next runtime status mechanism | status: waiting_approval | needs: David

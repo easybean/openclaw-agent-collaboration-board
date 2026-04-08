@@ -1,4 +1,4 @@
-import type { RawTaskRecord } from '../collector'
+import type { RawTaskRecord } from '../collector/index.ts'
 
 export type BoardTask = {
   taskId: string

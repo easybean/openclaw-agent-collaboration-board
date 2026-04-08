@@ -1,4 +1,4 @@
-import type { EvaluatedBoardTask } from '../evaluator'
+import type { EvaluatedBoardTask } from '../evaluator/index.ts'
 
 export function renderTelegramBoard(tasks: EvaluatedBoardTask[]): string {
   const current = tasks.filter(task => ['running', 'stale', 'blocked', 'waiting_input', 'waiting_approval'].includes(task.progressState))

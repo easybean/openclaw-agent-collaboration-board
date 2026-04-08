@@ -8,7 +8,8 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "echo TODO: add build step",
-    "dev": "echo TODO: add dev entry",
+    "dev": "node --experimental-strip-types src/demo.ts",
+    "demo": "node --experimental-strip-types src/demo.ts",
     "test": "echo TODO: add tests"
   }
 }

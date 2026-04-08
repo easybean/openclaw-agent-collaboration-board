@@ -1,4 +1,4 @@
-import type { BoardTask } from '../normalizer'
+import type { BoardTask } from '../normalizer/index.ts'
 
 export type EvaluatedBoardTask = BoardTask & {
   isActuallyProgressing: boolean
