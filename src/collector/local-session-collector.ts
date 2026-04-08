@@ -45,14 +45,15 @@ function safeReadLines(filePath: string): string[] {
 function extractTextFromJsonlLine(line: string): string {
   try {
     const obj = JSON.parse(line)
-    const content = obj?.content
+    const message = obj?.message ?? obj
+    const content = message?.content
     if (Array.isArray(content)) {
       return content
         .filter((part: any) => part?.type === 'text' && typeof part?.text === 'string')
         .map((part: any) => part.text)
         .join('\n')
     }
-    if (typeof obj?.text === 'string') return obj.text
+    if (typeof message?.text === 'string') return message.text
     return ''
   } catch {
     return ''
