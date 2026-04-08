@@ -1,5 +1,7 @@
 # OpenClaw Agent Collaboration Board
 
+[中文说明 / Chinese README](./README.zh-CN.md)
+
 Lightweight collaboration observability for multi-agent execution.
 
 ## Overview
