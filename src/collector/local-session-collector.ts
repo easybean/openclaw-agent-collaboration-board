@@ -3,11 +3,28 @@ import path from 'node:path'
 import type { RawTaskRecord, StateCollector } from './index.ts'
 
 const AGENT_IDS = ['hongqigong', 'yangguo', 'huangrong', 'yideng', 'chengying', 'main']
-const HARD_STATE_KEYWORDS = ['completed', 'blocked', 'waiting_input', 'waiting_approval', 'running', 'received']
-const SOFT_RUNNING = ['继续做', '继续推进', '我继续', '开始做', '启动', '推进', '在做', 'running']
-const SOFT_COMPLETED = ['已完成', '已修完', '已交付', '已推上', '已创建', '定稿', '发布', 'completed']
-const SOFT_WAITING = ['等你', '待你', '待确认', '待拍板', '等待', 'waiting_approval', 'waiting_input']
-const SOFT_BLOCKED = ['卡住', '阻塞', 'blocked', '超时', '失败']
+const STRUCTURED_MARKERS = [
+  '【任务确认】',
+  '【任务接单】',
+  '【Runtime 状态说明】',
+  '【项目状态板】',
+  'Task ID：',
+  'Task ID:',
+  'owner：',
+  'owner:',
+  '当前状态：',
+  '当前状态:',
+  '下一步：',
+  '下一步:',
+  '是否需要 David 动作：',
+  '是否需要 David 动作:',
+  'received',
+  'running',
+  'completed',
+  'blocked',
+  'waiting_input',
+  'waiting_approval',
+]
 
 function safeReadJson(filePath: string): any | null {
   try {
@@ -54,65 +71,33 @@ function getLatestSessionFile(agentId: string): string | null {
   return latest?.sessionFile ?? null
 }
 
-function includesAny(text: string, needles: string[]): boolean {
-  return needles.some(needle => text.includes(needle))
+function containsStructuredMarker(text: string): boolean {
+  return STRUCTURED_MARKERS.some(marker => text.includes(marker))
 }
 
-function inferStatus(text: string): { status: string; ackStatus: string | null; needsDavidAction: boolean } {
+function inferStructuredStatus(text: string): { status: string; ackStatus: string | null; needsDavidAction: boolean } {
   const lower = text.toLowerCase()
-  const mixed = `${text}\n${lower}`
+  const needsDavidAction = text.includes('是否需要 David 动作：是') || text.includes('是否需要 David 动作: 是') || text.includes('待拍板') || text.includes('David')
 
-  if (includesAny(mixed, HARD_STATE_KEYWORDS)) {
-    if (lower.includes('waiting_approval')) return { status: 'waiting_approval', ackStatus: 'waiting_approval', needsDavidAction: true }
-    if (lower.includes('waiting_input')) return { status: 'waiting_input', ackStatus: 'waiting_input', needsDavidAction: false }
-    if (lower.includes('blocked')) return { status: 'blocked', ackStatus: 'blocked', needsDavidAction: false }
-    if (lower.includes('completed')) return { status: 'completed', ackStatus: 'completed', needsDavidAction: false }
-    if (lower.includes('running')) return { status: 'running', ackStatus: 'running', needsDavidAction: false }
-    if (lower.includes('received')) return { status: 'stale', ackStatus: 'received', needsDavidAction: false }
-  }
+  if (lower.includes('waiting_approval')) return { status: 'waiting_approval', ackStatus: 'waiting_approval', needsDavidAction: true }
+  if (lower.includes('waiting_input')) return { status: 'waiting_input', ackStatus: 'waiting_input', needsDavidAction: false }
+  if (lower.includes('blocked')) return { status: 'blocked', ackStatus: 'blocked', needsDavidAction: false }
+  if (lower.includes('completed')) return { status: 'completed', ackStatus: 'completed', needsDavidAction: false }
+  if (lower.includes('running')) return { status: 'running', ackStatus: 'running', needsDavidAction }
+  if (lower.includes('received')) return { status: 'stale', ackStatus: 'received', needsDavidAction }
 
-  if (includesAny(mixed, SOFT_WAITING)) {
-    const needsDavidAction = text.includes('拍板') || text.includes('David') || text.includes('董事长')
-    return {
-      status: needsDavidAction ? 'waiting_approval' : 'waiting_input',
-      ackStatus: needsDavidAction ? 'waiting_approval' : 'waiting_input',
-      needsDavidAction,
-    }
-  }
+  if (text.includes('当前状态：正常') || text.includes('当前状态: 正常')) return { status: 'running', ackStatus: 'running', needsDavidAction }
+  if (text.includes('当前状态：已阻塞') || text.includes('当前状态: 已阻塞')) return { status: 'blocked', ackStatus: 'blocked', needsDavidAction }
+  if (text.includes('当前状态：有风险') || text.includes('当前状态: 有风险')) return { status: 'stale', ackStatus: null, needsDavidAction }
 
-  if (includesAny(mixed, SOFT_BLOCKED)) {
-    return { status: 'blocked', ackStatus: 'blocked', needsDavidAction: false }
-  }
-
-  if (includesAny(mixed, SOFT_COMPLETED)) {
-    return { status: 'completed', ackStatus: 'completed', needsDavidAction: false }
-  }
-
-  if (includesAny(mixed, SOFT_RUNNING)) {
-    return { status: 'running', ackStatus: 'running', needsDavidAction: false }
-  }
-
-  return { status: 'stale', ackStatus: null, needsDavidAction: false }
+  return { status: 'stale', ackStatus: null, needsDavidAction }
 }
 
-function buildA2AVisibilityTask(agentId: string, texts: string[], updatedAt: string): RawTaskRecord | null {
-  const a2aTexts = texts.filter(text => text.includes('received') || text.includes('running') || text.includes('completed') || text.includes('blocked') || text.includes('Agent-to-agent'))
-  if (a2aTexts.length === 0) return null
-
-  const joined = a2aTexts.join('\n')
-  const inferred = inferStatus(joined)
-
-  return {
-    taskId: `a2a-${agentId}`,
-    title: `${agentId} A2A visibility`,
-    type: 'runtime',
-    owner: agentId,
-    executor: agentId,
-    status: inferred.status,
-    ackStatus: inferred.ackStatus,
-    updatedAt,
-    summary: a2aTexts[a2aTexts.length - 1],
-  }
+function extractTitle(agentId: string, text: string): string {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean)
+  const firstMeaningful = lines.find(line => line.startsWith('【') || line.startsWith('Task ID') || line.includes('项目：') || line.includes('项目:'))
+  if (firstMeaningful) return `${agentId} ${firstMeaningful}`
+  return `${agentId} structured collaboration`
 }
 
 export class LocalSessionCollector implements StateCollector {
@@ -124,27 +109,38 @@ export class LocalSessionCollector implements StateCollector {
       if (!sessionFile) continue
 
       const lines = safeReadLines(sessionFile)
-      const recent = lines.slice(-20)
+      const recent = lines.slice(-40)
       const texts = recent.map(extractTextFromJsonlLine).filter(Boolean)
-      const joined = texts.join('\n')
-      if (!joined) continue
+      const structuredTexts = texts.filter(containsStructuredMarker)
+      if (structuredTexts.length === 0) continue
+
+      const latestStructured = structuredTexts[structuredTexts.length - 1]
+      const inferred = inferStructuredStatus(latestStructured)
       const updatedAt = new Date(fs.statSync(sessionFile).mtimeMs).toISOString()
-      const inferred = inferStatus(joined)
 
       results.push({
-        taskId: `session-${agentId}`,
-        title: `${agentId} recent collaboration`,
+        taskId: `structured-${agentId}`,
+        title: extractTitle(agentId, latestStructured),
         type: 'runtime',
         owner: agentId,
         executor: agentId,
         status: inferred.status,
         ackStatus: inferred.ackStatus,
         updatedAt,
-        summary: texts[texts.length - 1] ?? null,
+        summary: latestStructured,
       })
 
-      const a2aTask = buildA2AVisibilityTask(agentId, texts, updatedAt)
-      if (a2aTask) results.push(a2aTask)
+      results.push({
+        taskId: `a2a-${agentId}`,
+        title: `${agentId} A2A visibility`,
+        type: 'runtime',
+        owner: agentId,
+        executor: agentId,
+        status: inferred.status,
+        ackStatus: inferred.ackStatus,
+        updatedAt,
+        summary: latestStructured,
+      })
     }
 
     return results
