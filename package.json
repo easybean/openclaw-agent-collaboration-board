@@ -10,6 +10,7 @@
     "build": "echo TODO: add build step",
     "dev": "node --experimental-strip-types src/demo.ts",
     "demo": "node --experimental-strip-types src/demo.ts",
+    "real-demo": "node --experimental-strip-types src/real-demo.ts",
     "test": "echo TODO: add tests"
   }
 }
