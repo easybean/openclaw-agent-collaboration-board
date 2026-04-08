@@ -3,5 +3,12 @@
   "version": "0.1.0",
   "private": false,
   "description": "A lightweight collaboration observability plugin for OpenClaw",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "echo TODO: add build step",
+    "dev": "echo TODO: add dev entry",
+    "test": "echo TODO: add tests"
+  }
 }
