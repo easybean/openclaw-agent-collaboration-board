@@ -9,9 +9,9 @@ export function renderTelegramBoard(tasks: EvaluatedBoardTask[]): string {
   lines.push('【项目状态板】')
   lines.push('项目：OpenClaw Agent Collaboration Board')
   lines.push('')
-  lines.push('A2A 可见性')
+  lines.push('协作回执状态')
   if (a2aItems.length === 0) lines.push('- 当前无')
-  else for (const task of a2aItems) lines.push(`- ${task.title} | ack: ${task.ackStatus ?? 'none'} | status: ${task.progressState}`)
+  else for (const task of a2aItems) lines.push(`- ${task.owner} | ack: ${task.ackStatus ?? 'none'} | status: ${task.progressState} | 摘要: ${((task.summary ?? '').replace(/\s+/g, ' ').slice(0, 60)) || '无'}`)
 
   lines.push('')
   lines.push('当前任务')
