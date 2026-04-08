@@ -9,16 +9,23 @@ export type EvaluatedBoardTask = BoardTask & {
 }
 
 export function evaluateTask(task: BoardTask): EvaluatedBoardTask {
-  const needsDavidAction = task.status === 'waiting_approval'
-  const isStale = task.status === 'running' ? false : task.status === 'stale'
-  const isActuallyProgressing = !isStale && task.status !== 'blocked' && task.status !== 'waiting_input' && task.status !== 'waiting_approval'
+  const completed = task.status === 'completed'
+  const blocked = task.status === 'blocked'
+  const waitingInput = task.status === 'waiting_input'
+  const waitingApproval = task.status === 'waiting_approval'
+  const stale = task.status === 'stale'
+  const running = task.status === 'running'
+
+  const needsDavidAction = waitingApproval
+  const isStale = stale
+  const isActuallyProgressing = completed || running
 
   return {
     ...task,
     isActuallyProgressing,
     progressState: isStale ? 'stale' : task.status,
     needsDavidAction,
-    nextActor: needsDavidAction ? 'David' : task.owner,
+    nextActor: waitingApproval ? 'David' : blocked || waitingInput ? task.owner : task.owner,
     isStale,
   }
 }
