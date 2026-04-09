@@ -17,17 +17,17 @@ export function renderTelegramBoard(tasks: EvaluatedBoardTask[]): string {
   lines.push('')
   lines.push('当前任务')
   if (current.length === 0) lines.push('- 当前无')
-  else for (const task of current) lines.push(`- ${task.title} | owner: ${task.owner} | status: ${task.progressState} | next: ${task.nextActor ?? 'unknown'}`)
+  else for (const task of current) lines.push(`- ${task.title} | owner: ${task.owner} | status: ${task.progressState} | next: ${task.nextActor ?? 'unknown'} | 摘要: ${task.summary ?? '无'}`)
 
   lines.push('')
   lines.push('已完成')
   if (completed.length === 0) lines.push('- 当前无')
-  else for (const task of completed) lines.push(`- ${task.title} | owner: ${task.owner} | status: completed`)
+  else for (const task of completed) lines.push(`- ${task.title} | owner: ${task.owner} | status: completed | 摘要: ${task.summary ?? '无'}`)
 
   lines.push('')
   lines.push('待拍板')
   if (decisionItems.length === 0) lines.push('- 当前无')
-  else for (const task of decisionItems) lines.push(`- ${task.title} | status: ${task.progressState} | needs: David`)
+  else for (const task of decisionItems) lines.push(`- ${task.title} | status: ${task.progressState} | needs: David | 摘要: ${task.summary ?? '无'}`)
 
   return lines.join('\n')
 }

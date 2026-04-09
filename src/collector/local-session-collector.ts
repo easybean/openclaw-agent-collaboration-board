@@ -10,6 +10,16 @@ const STRUCTURED_MARKERS = [
   'received', 'running', 'completed', 'blocked', 'waiting_input', 'waiting_approval'
 ]
 const NOISE_PREFIXES = ['Conversation info', 'Sender (untrusted metadata)', '```json', '{', '}', 'Replied message']
+const TASK_PATTERNS = [
+  { key: 'A2A Task/State', title: 'A2A Task/State 协议' },
+  { key: 'ACK', title: 'ACK 机制' },
+  { key: 'Collector', title: 'Collector 开发' },
+  { key: 'GitHub', title: 'GitHub 仓库初始化' },
+  { key: 'README', title: 'README 完善' },
+  { key: 'Runtime', title: 'Runtime 状态跟踪' },
+  { key: '看板', title: '看板插件推进' },
+  { key: '状态板', title: '项目状态板' },
+]
 
 function safeReadJson(filePath: string): any | null {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')) } catch { return null }
@@ -62,47 +72,43 @@ function cleanSummary(text: string): string {
     .replace(/\s+/g, ' ')
     .trim()
 
-  return joined.slice(0, 90)
+  return joined.slice(0, 100)
 }
 
 function inferStructuredStatus(text: string): { status: string; ackStatus: string | null; needsDavidAction: boolean } {
   const lower = text.toLowerCase()
   const cleaned = cleanSummary(text)
-  const hasExplicitNeedDavid = text.includes('是否需要 David 动作：是') || text.includes('是否需要 David 动作: 是')
-  const hasDecisionLanguage = cleaned.includes('待拍板') || cleaned.includes('需要 David') || cleaned.includes('需 David')
-  const hasCompletedSignal = lower.includes('completed') || cleaned.includes('已完成') || cleaned.includes('已修完') || cleaned.includes('已交付') || cleaned.includes('已推上') || cleaned.includes('定稿') || cleaned.includes('发布')
-  const hasBlockedSignal = lower.includes('blocked') || cleaned.includes('阻塞') || cleaned.includes('卡住') || cleaned.includes('超时') || cleaned.includes('失败')
-  const hasWaitingInput = lower.includes('waiting_input') || cleaned.includes('待输入') || cleaned.includes('等输入')
-  const hasRunningSignal = lower.includes('running') || cleaned.includes('继续推进') || cleaned.includes('继续做') || cleaned.includes('在做') || cleaned.includes('启动')
-  const hasReceivedSignal = lower.includes('received')
+  const explicitNeedDavid = text.includes('是否需要 David 动作：是') || text.includes('是否需要 David 动作: 是')
+  const completed = lower.includes('completed') || cleaned.includes('已完成') || cleaned.includes('已修完') || cleaned.includes('已交付') || cleaned.includes('已推上') || cleaned.includes('定稿') || cleaned.includes('发布')
+  const blocked = lower.includes('blocked') || cleaned.includes('阻塞') || cleaned.includes('卡住') || cleaned.includes('超时') || cleaned.includes('失败')
+  const waitingInput = lower.includes('waiting_input') || cleaned.includes('待输入') || cleaned.includes('等输入')
+  const running = lower.includes('running') || cleaned.includes('继续推进') || cleaned.includes('继续做') || cleaned.includes('在做') || cleaned.includes('启动')
+  const received = lower.includes('received')
+  const waitingApproval = lower.includes('waiting_approval') || explicitNeedDavid || cleaned.includes('待拍板') || cleaned.includes('需要 David') || cleaned.includes('需 David')
 
-  if (hasCompletedSignal) return { status: 'completed', ackStatus: 'completed', needsDavidAction: false }
-  if (hasBlockedSignal) return { status: 'blocked', ackStatus: 'blocked', needsDavidAction: false }
-  if (hasWaitingInput) return { status: 'waiting_input', ackStatus: 'waiting_input', needsDavidAction: false }
-  if (hasExplicitNeedDavid || hasDecisionLanguage || lower.includes('waiting_approval')) return { status: 'waiting_approval', ackStatus: 'waiting_approval', needsDavidAction: true }
-  if (hasRunningSignal) return { status: 'running', ackStatus: 'running', needsDavidAction: false }
-  if (hasReceivedSignal) return { status: 'stale', ackStatus: 'received', needsDavidAction: false }
+  if (completed) return { status: 'completed', ackStatus: 'completed', needsDavidAction: false }
+  if (blocked) return { status: 'blocked', ackStatus: 'blocked', needsDavidAction: false }
+  if (waitingInput) return { status: 'waiting_input', ackStatus: 'waiting_input', needsDavidAction: false }
+  if (waitingApproval) return { status: 'waiting_approval', ackStatus: 'waiting_approval', needsDavidAction: true }
+  if (running) return { status: 'running', ackStatus: 'running', needsDavidAction: false }
+  if (received) return { status: 'stale', ackStatus: 'received', needsDavidAction: false }
   return { status: 'stale', ackStatus: null, needsDavidAction: false }
 }
 
-function cleanTitle(agentId: string, text: string): string {
+function inferTaskTitle(agentId: string, text: string): string {
   const cleaned = cleanSummary(text)
-  if (cleaned.includes('A2A Task/State')) return 'A2A Task/State 协议'
-  if (cleaned.includes('ACK')) return 'ACK 机制'
-  if (cleaned.includes('Collector')) return 'Collector 开发'
-  if (cleaned.includes('Runtime 状态汇报') || cleaned.includes('Runtime 状态说明')) return 'Runtime 状态跟踪'
-  if (cleaned.includes('项目状态板')) return '项目状态板'
-  if (cleaned.includes('GitHub')) return 'GitHub 仓库初始化'
+  for (const pattern of TASK_PATTERNS) {
+    if (cleaned.includes(pattern.key)) return pattern.title
+  }
   if (cleaned.includes('任务确认')) return `${agentId} 任务确认`
   if (cleaned.includes('任务接单')) return `${agentId} 任务接单`
-  if (cleaned.includes('待拍板') || cleaned.includes('需要 David')) return `${agentId} 待拍板事项`
   return `${agentId} 协作状态`
 }
 
-function dedupeByTaskId(records: RawTaskRecord[]): RawTaskRecord[] {
-  const map = new Map<string, RawTaskRecord>()
-  for (const record of records) map.set(record.taskId, record)
-  return [...map.values()]
+function dedupe(records: RawTaskRecord[]): RawTaskRecord[] {
+  const byId = new Map<string, RawTaskRecord>()
+  for (const record of records) byId.set(record.taskId, record)
+  return [...byId.values()]
 }
 
 export class LocalSessionCollector implements StateCollector {
@@ -113,42 +119,47 @@ export class LocalSessionCollector implements StateCollector {
       const sessionFile = getLatestSessionFile(agentId)
       if (!sessionFile) continue
       const lines = safeReadLines(sessionFile)
-      const recent = lines.slice(-80)
+      const recent = lines.slice(-120)
       const texts = recent.map(extractTextFromJsonlLine).filter(Boolean)
       const structuredTexts = texts.filter(containsStructuredMarker)
       if (structuredTexts.length === 0) continue
 
-      const latestStructured = structuredTexts[structuredTexts.length - 1]
-      const inferred = inferStructuredStatus(latestStructured)
       const updatedAt = new Date(fs.statSync(sessionFile).mtimeMs).toISOString()
-      const title = cleanTitle(agentId, latestStructured)
-      const summary = cleanSummary(latestStructured)
 
-      results.push({
-        taskId: `structured-${agentId}-${title}`,
-        title,
-        type: 'runtime',
-        owner: agentId,
-        executor: agentId,
-        status: inferred.status,
-        ackStatus: inferred.ackStatus,
-        updatedAt,
-        summary,
-      })
+      for (const rawText of structuredTexts.slice(-8)) {
+        const summary = cleanSummary(rawText)
+        if (!summary) continue
+        const inferred = inferStructuredStatus(rawText)
+        const title = inferTaskTitle(agentId, rawText)
 
+        results.push({
+          taskId: `task-${agentId}-${title}`,
+          title,
+          type: 'runtime',
+          owner: agentId,
+          executor: agentId,
+          status: inferred.status,
+          ackStatus: inferred.ackStatus,
+          updatedAt,
+          summary,
+        })
+      }
+
+      const latestStructured = structuredTexts[structuredTexts.length - 1]
+      const latestStatus = inferStructuredStatus(latestStructured)
       results.push({
         taskId: `a2a-${agentId}`,
         title: `${agentId} A2A 可见性`,
         type: 'runtime',
         owner: agentId,
         executor: agentId,
-        status: inferred.status,
-        ackStatus: inferred.ackStatus,
+        status: latestStatus.status,
+        ackStatus: latestStatus.ackStatus,
         updatedAt,
-        summary,
+        summary: cleanSummary(latestStructured),
       })
     }
 
-    return dedupeByTaskId(results)
+    return dedupe(results)
   }
 }
