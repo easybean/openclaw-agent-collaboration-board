@@ -10,3 +10,11 @@ const evaluated = evaluateTasks(normalized)
 const output = renderTelegramBoard(evaluated)
 
 console.log(output)
+
+import { collectAgentStatuses } from './agent-status.ts'
+
+const agentStatuses = collectAgentStatuses(evaluated)
+console.log('\nAgent 状态层')
+for (const item of agentStatuses) {
+  console.log(`- ${item.agentId} | state: ${item.currentState} | ack: ${item.lastAckStatus ?? 'none'} | alive: ${item.isLikelyAlive ? 'yes' : 'no'} | summary: ${(item.currentTaskSummary ?? '').slice(0, 40)}`)
+}
